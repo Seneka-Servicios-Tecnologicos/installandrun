@@ -1,70 +1,75 @@
-# Hacer la app independiente de Lovable y desplegable en Vercel
+## Plan: Editar clientes, logo, y mejoras del proyecto
 
-## Diagnóstico
+### 1. Editar cliente (nombre, contacto, notas)
 
-El 404 en Vercel viene de tres causas combinadas:
+En `src/routes/cliente.$id.tsx`, agregar un botón **"Editar"** (visible solo para el creador, no para invitados) junto al de eliminar. Abre un `Dialog` con los campos:
+- Nombre *
+- Contacto
+- Notas
+- Logo (ver punto 2)
 
-1. **Build target equivocado.** El proyecto está configurado para **Cloudflare Workers** (`wrangler.jsonc` + `@cloudflare/vite-plugin` activado por `@lovable.dev/vite-tanstack-config`). El output de ese build no es compatible con Vercel — Vercel sirve `dist/` como estático y no encuentra `index.html` para rutas como `/clientes`, de ahí el 404.
-2. **Variables de entorno ausentes en Vercel.** El `.env` está en `.gitignore`, así que `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` no llegan al build de Vercel. Aunque arreglemos el routing, Supabase no inicializa.
-3. **Sin preset Node para TanStack Start.** Para SSR en Vercel hay que decirle a TanStack Start que genere salida tipo Node/Vercel, no Worker.
+Al guardar: `UPDATE` sobre `clients` y refrescar estado. La política RLS "Creator can update clients" ya permite esto.
 
-## Cambios a realizar
+### 2. Logo del cliente (subida + compresión agresiva)
 
-### 1. Cambiar el target de build a Vercel (Node SSR)
-- En `vite.config.ts`, pasar opciones al wrapper de Lovable:
-  - `cloudflare: false` para desactivar el plugin de Cloudflare en build.
-  - `tanstackStart: { target: "vercel" }` para que TanStack Start emita el handler serverless que Vercel espera (`.vercel/output/`).
-- Eliminar `wrangler.jsonc` (ya no aplica) y la dependencia `@cloudflare/vite-plugin` del `package.json` (queda inerte).
+**DB (migración):**
+- Agregar columna `logo_path TEXT` a `public.clients`.
 
-### 2. Configurar variables de entorno en Vercel
-- Documentar (en un `README.md` actualizado) qué variables hay que añadir en el dashboard de Vercel → Settings → Environment Variables:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_PUBLISHABLE_KEY`
-  - `VITE_SUPABASE_PROJECT_ID`
-  - `SUPABASE_URL`
-  - `SUPABASE_PUBLISHABLE_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY` (solo si en algún momento usamos server functions admin; hoy no es estrictamente necesario porque `invite-user` vive en Supabase Edge).
-- Añadir un `.env.example` con las claves (sin valores secretos) para que cualquiera pueda clonar y desplegar.
-- Mantener `.env` en `.gitignore` (correcto). Las claves anon son públicas pero igual se gestionan vía Vercel.
+**Storage:**
+- Reutilizar el bucket existente `project-media` con un prefijo `clients/{client_id}/logo.jpg`, o crear un nuevo bucket público `client-logos` (recomendado, para que el logo se vea sin signed URL en listas). Voy con **bucket público `client-logos`** + políticas: SELECT público; INSERT/UPDATE/DELETE solo al creador del cliente (validado vía path `{client_id}/...` y join a `clients.created_by`).
 
-### 3. Añadir `vercel.json` mínimo
-- Configurar `framework: null` y dejar que el preset de TanStack Start maneje el output. Solo hace falta si Vercel no autodetecta — en la mayoría de casos no es necesario, pero lo incluimos como fallback con `buildCommand: "vite build"` y `outputDirectory: ".vercel/output"`.
+**Compresión:**
+- Reutilizar `compressImage` de `src/lib/compress.ts`, pero con preset más agresivo para logos: máx 512px lado mayor, calidad 0.75, JPEG. Crear helper `compressLogo(blob)` en `src/lib/compress.ts`.
+- Subida vía nuevo helper `uploadClientLogo(clientId, blob)` en `src/lib/storage.ts` que sube a `client-logos/{clientId}/logo.jpg` con `upsert: true`.
 
-### 4. Verificar Supabase y RLS independientes de Lovable
-- El cliente Supabase ya lee de `import.meta.env.VITE_SUPABASE_URL` con fallback a `process.env.SUPABASE_URL` — compatible con cualquier host. ✔
-- Las RLS policies y la función Edge `invite-user` viven dentro del proyecto Supabase administrado, no en Lovable. Siguen funcionando desde cualquier dominio. ✔
-- La función `invite-user` usa `redirectTo: ${origin}/reset-password`. Hay que asegurarse de que el dominio de Vercel esté en **Supabase → Authentication → URL Configuration → Redirect URLs**. Lo dejaré documentado en el README.
+**UI:**
+- En el diálogo de edición y en el de creación (`src/routes/clientes.tsx`): input file con preview circular, botón "Quitar logo".
+- Mostrar el logo en:
+  - Tarjeta de cliente (lista de `/clientes`) sustituyendo el ícono `Building2`.
+  - Cabecera de `/cliente/$id`.
+  - Opcional: avatar pequeño en tarjetas de proyecto que tengan `client_id`.
 
-### 5. Limpieza del repositorio para auto-hospedaje
-- README con pasos: clonar, `bun install`, configurar env vars, `vercel deploy`.
-- Quitar `.lovable/` del control de versiones si está committeado (añadir a `.gitignore`).
-- Quitar `wrangler.jsonc`.
+### 3. Ideas adicionales (a confirmar cuáles incluir)
 
-## Detalles técnicos (resumen)
+Propuestas priorizadas, basadas en patrones que funcionan bien en apps de reportes de instalación / field service:
 
-```text
-vite.config.ts
-└─ defineConfig({
-     cloudflare: false,
-     tanstackStart: { target: "vercel" },
-   })
+**Alto impacto, esfuerzo bajo-medio:**
+- **a) Exportar reporte PDF de un proyecto** — botón "Generar reporte" que produce un PDF con portada (logo del cliente, nombre proyecto, ubicación, fechas) + entradas agrupadas por día con fotos, notas y timestamps. Ideal para enviar al cliente al cerrar la obra.
+- **b) Compartir proyecto público por enlace** — ya existe `visibility: public`. Añadir botón "Copiar enlace" + página pública read-only (sin auth) para que el cliente vea avances en tiempo real.
+- **c) Geolocalización de entradas** — guardar `lat/lng` opcional en cada entrada cuando se captura desde el móvil; mostrar mapa de la obra.
+- **d) Etiquetas/categorías por entrada** (ej: "Antes", "Durante", "Después", "Incidencia", "Material") con filtros en la galería.
+- **e) Búsqueda global** — buscar por texto en proyectos, entradas, clientes desde el header.
+- **f) Dashboard inicial** — KPIs simples en `/`: nº de proyectos activos, entradas esta semana, último proyecto trabajado, gráfico de actividad por día.
 
-Vercel env vars (Production + Preview):
-  VITE_SUPABASE_URL=...
-  VITE_SUPABASE_PUBLISHABLE_KEY=...
-  VITE_SUPABASE_PROJECT_ID=daakyngvtaidjtjvxutm
-  SUPABASE_URL=...
-  SUPABASE_PUBLISHABLE_KEY=...
+**Medio impacto:**
+- **g) Estados de proyecto más ricos** — pasar de `activo|finalizado` a `pendiente|en curso|pausado|finalizado|facturado` con kanban opcional.
+- **h) Checklists / fases por proyecto** — plantillas reutilizables (ej: "Inspección → Instalación → Pruebas → Entrega").
+- **i) Asignación de técnicos** — varios usuarios pueden colaborar en un mismo proyecto; ya hay tabla `user_roles`, faltaría `project_members`.
+- **j) Comentarios en entradas** — hilo corto por entrada para discutir un detalle.
+- **k) Modo offline / cola de subida** — capturar fotos sin internet y subir cuando vuelva; usa IndexedDB.
 
-Supabase Auth → Redirect URLs:
-  https://<tu-dominio-vercel>.vercel.app/reset-password
-  https://<tu-dominio-vercel>.vercel.app/**
-```
+**Pulido / detalles:**
+- **l) Atajos de teclado** (N nueva entrada, / buscar, etc.).
+- **m) Notificaciones por email** cuando un técnico sube entradas a un proyecto que sigues.
+- **n) Marca de agua opcional** en fotos exportadas (logo del cliente o del equipo).
+- **o) PWA instalable** con ícono propio y splash.
 
-## Lo que NO hace falta cambiar
-- Código de rutas, componentes, hooks, Supabase client → ya son agnósticos al host.
-- Schema de base de datos y RLS → independiente de Lovable, vive en el proyecto Supabase.
-- Edge function `invite-user` → se mantiene en Supabase, accesible desde cualquier dominio.
+Voy a preguntar cuáles quieres priorizar antes de implementar.
 
-## Resultado esperado
-Tras estos cambios, `git push` a GitHub e import en Vercel → build exitoso → SSR funcionando en `/`, `/clientes`, `/proyecto/$id`, etc., sin 404, con la misma base de datos y auth que en Lovable.
+### Orden de implementación de esta tanda
+
+1. Migración: columna `logo_path` + bucket `client-logos` con RLS.
+2. Helpers `compressLogo` y `uploadClientLogo`.
+3. Diálogo "Editar cliente" + integrar logo en crear/editar.
+4. Mostrar logo en lista y detalle.
+5. Preguntar al usuario qué features extras quiere de la lista (3).
+
+### Detalles técnicos
+
+- RLS del bucket `client-logos`:
+  - `SELECT`: público (`true`).
+  - `INSERT/UPDATE/DELETE`: `bucket_id = 'client-logos' AND EXISTS (SELECT 1 FROM clients WHERE id::text = (storage.foldername(name))[1] AND created_by = auth.uid()) AND NOT is_guest()`.
+- Path: `{client_id}/logo.jpg`, `upsert: true` para sobreescribir.
+- Compresión logo: `maxWidthOrHeight: 512`, `maxSizeMB: 0.15`, `initialQuality: 0.75`, output `image/jpeg`.
+- Al eliminar cliente: borrar también `client-logos/{id}/logo.jpg` para no dejar huérfanos.
+- URL pública: `${SUPABASE_URL}/storage/v1/object/public/client-logos/{id}/logo.jpg` — guardar solo el path en DB, construir URL en el cliente.
