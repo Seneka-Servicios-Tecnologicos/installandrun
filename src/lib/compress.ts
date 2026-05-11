@@ -43,6 +43,22 @@ export async function compressImage(input: Blob): Promise<CompressedFile> {
 }
 
 /**
+ * Compresión agresiva para logos de cliente:
+ * - Máximo 512px lado mayor
+ * - JPEG calidad ~75%
+ * - Objetivo < 150 KB
+ */
+export async function compressLogo(input: Blob): Promise<Blob> {
+  return imageCompression(input as File, {
+    maxSizeMB: 0.15,
+    maxWidthOrHeight: 512,
+    useWebWorker: true,
+    fileType: "image/jpeg",
+    initialQuality: 0.75,
+  });
+}
+
+/**
  * Genera un thumbnail (frame) de un video.
  */
 async function videoThumbnail(blob: Blob): Promise<Blob> {
