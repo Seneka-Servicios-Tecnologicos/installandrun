@@ -373,7 +373,7 @@ function ClientsPage() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleDelete(c.id, c.project_count)}
+                            onClick={() => handleDelete(c.id, c.project_count, c.logo_path)}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
                             Eliminar
