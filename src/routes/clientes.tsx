@@ -49,6 +49,7 @@ interface ClientRow {
   name: string;
   contact: string | null;
   notes: string | null;
+  logo_path: string | null;
   created_at: string;
   created_by: string;
   project_count: number;
@@ -64,7 +65,10 @@ function ClientsPage() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [notes, setNotes] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -74,7 +78,7 @@ function ClientsPage() {
     if (!user) return;
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, contact, notes, created_at, created_by")
+      .select("id, name, contact, notes, logo_path, created_at, created_by")
       .order("name", { ascending: true });
     if (error) {
       toast.error("Error cargando clientes");
@@ -105,28 +109,61 @@ function ClientsPage() {
     [clients, search],
   );
 
+  const resetForm = () => {
+    setName(""); setContact(""); setNotes("");
+    setLogoFile(null);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(null);
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast.error("Selecciona una imagen");
+      return;
+    }
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoFile(f);
+    setLogoPreview(URL.createObjectURL(f));
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setCreating(true);
-    const { error } = await supabase.from("clients").insert({
-      name,
-      contact: contact || null,
-      notes: notes || null,
-      created_by: user.id,
-    });
-    setCreating(false);
-    if (error) {
+    const { data: created, error } = await supabase
+      .from("clients")
+      .insert({
+        name,
+        contact: contact || null,
+        notes: notes || null,
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (error || !created) {
+      setCreating(false);
       toast.error("Error al crear cliente");
       return;
     }
+    if (logoFile) {
+      try {
+        const compressed = await compressLogo(logoFile);
+        const path = await uploadClientLogo(created.id, compressed);
+        await supabase.from("clients").update({ logo_path: path }).eq("id", created.id);
+      } catch {
+        toast.error("Cliente creado, pero falló el logo");
+      }
+    }
+    setCreating(false);
     toast.success("Cliente creado");
-    setName(""); setContact(""); setNotes("");
+    resetForm();
     setOpen(false);
     load();
   };
 
-  const handleDelete = async (clientId: string, projectCount: number) => {
+  const handleDelete = async (clientId: string, projectCount: number, logoPath: string | null) => {
     if (projectCount > 0) {
       const { error: upErr } = await supabase
         .from("projects")
@@ -136,6 +173,9 @@ function ClientsPage() {
         toast.error("No se pudieron desvincular los proyectos");
         return;
       }
+    }
+    if (logoPath) {
+      await deleteClientLogo(logoPath).catch(() => {});
     }
     const { error } = await supabase.from("clients").delete().eq("id", clientId);
     if (error) {
