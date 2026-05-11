@@ -217,6 +217,36 @@ function ClientsPage() {
                   <DialogTitle>Nuevo cliente</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 rounded-full bg-muted overflow-hidden flex items-center justify-center shrink-0 border">
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Building2 className="h-6 w-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleLogoChange}
+                      />
+                      <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                        <ImagePlus className="h-4 w-4 mr-1" /> {logoFile ? "Cambiar" : "Logo"}
+                      </Button>
+                      {logoFile && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => {
+                          setLogoFile(null);
+                          if (logoPreview) URL.revokeObjectURL(logoPreview);
+                          setLogoPreview(null);
+                        }}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="c-name">Nombre *</Label>
                     <Input
@@ -247,7 +277,7 @@ function ClientsPage() {
                     />
                   </div>
                   <DialogFooter>
-                    <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                    <Button type="button" variant="ghost" onClick={() => { resetForm(); setOpen(false); }}>
                       Cancelar
                     </Button>
                     <Button type="submit" disabled={creating}>
