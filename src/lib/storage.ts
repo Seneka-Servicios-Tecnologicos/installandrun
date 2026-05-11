@@ -52,10 +52,11 @@ export async function deleteClientLogo(path: string): Promise<void> {
   await supabase.storage.from("client-logos").remove([path]);
 }
 
-export function getClientLogoUrl(path: string | null | undefined): string | null {
+export function getClientLogoUrl(path: string | null | undefined, cacheKey?: string): string | null {
   if (!path) return null;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!supabaseUrl) return null;
-  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/client-logos/${path}?v=${Date.now()}`;
+  const base = `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/client-logos/${path}`;
+  return cacheKey ? `${base}?v=${encodeURIComponent(cacheKey)}` : base;
 }
 
