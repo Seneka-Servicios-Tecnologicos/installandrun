@@ -325,8 +325,12 @@ function ClientsPage() {
                     aria-label={`Abrir ${c.name}`}
                   />
                   <div className="flex items-start gap-3 relative z-10 pointer-events-none">
-                    <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Building2 className="h-5 w-5" />
+                    <div className="h-10 w-10 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0 overflow-hidden">
+                      {c.logo_path ? (
+                        <img src={getClientLogoUrl(c.logo_path) ?? ""} alt={c.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <Building2 className="h-5 w-5" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
