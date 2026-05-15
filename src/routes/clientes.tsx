@@ -356,10 +356,29 @@ function ClientsPage() {
                       <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
                         {c.name}
                       </h3>
-                      {c.contact && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {c.contact}
-                        </p>
+                      {(c.email || c.phone) && (
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          {c.email && (
+                            <a
+                              href={`mailto:${c.email}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="relative z-20 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors truncate pointer-events-auto w-fit max-w-full"
+                            >
+                              <Mail className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{c.email}</span>
+                            </a>
+                          )}
+                          {c.phone && (
+                            <a
+                              href={`tel:${c.phone.replace(/[^+\d]/g, "")}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="relative z-20 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors pointer-events-auto w-fit"
+                            >
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span>{c.phone}</span>
+                            </a>
+                          )}
+                        </div>
                       )}
                       <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
                         <span>{c.project_count} {c.project_count === 1 ? "proyecto" : "proyectos"}</span>
