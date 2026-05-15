@@ -104,7 +104,7 @@ function ClientView() {
     (async () => {
       const { data: c } = await supabase
         .from("clients")
-        .select("id, name, contact, notes, logo_path, created_by")
+        .select("id, name, email, phone, notes, logo_path, created_by")
         .eq("id", id)
         .maybeSingle();
       if (!c) {
