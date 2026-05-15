@@ -112,7 +112,7 @@ function ClientsPage() {
   );
 
   const resetForm = () => {
-    setName(""); setContact(""); setNotes("");
+    setName(""); setEmail(""); setPhone(""); setNotes("");
     setLogoFile(null);
     if (logoPreview) URL.revokeObjectURL(logoPreview);
     setLogoPreview(null);
