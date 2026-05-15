@@ -190,7 +190,8 @@ function ClientView() {
   const openEdit = () => {
     if (!client) return;
     setEName(client.name);
-    setEContact(client.contact ?? "");
+    setEEmail(client.email ?? "");
+    setEPhone(client.phone ?? "");
     setENotes(client.notes ?? "");
     setELogoFile(null);
     if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
