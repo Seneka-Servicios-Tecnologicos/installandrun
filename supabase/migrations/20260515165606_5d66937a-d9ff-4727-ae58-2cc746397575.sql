@@ -1,0 +1,4 @@
+
+ALTER TABLE public.clients
+  ADD COLUMN IF NOT EXISTS email TEXT,
+  ADD COLUMN IF NOT EXISTS phone TEXT;
