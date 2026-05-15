@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, Building2, FolderOpen, LayoutGrid, Camera, Video, FileText, Lock, Globe, Trash2, Pencil, ImagePlus, X } from "lucide-react";
+import { ArrowLeft, Building2, FolderOpen, LayoutGrid, Camera, Video, FileText, Lock, Globe, Trash2, Pencil, ImagePlus, X, Mail, Phone } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,8 @@ export const Route = createFileRoute("/cliente/$id")({
 interface Client {
   id: string;
   name: string;
-  contact: string | null;
+  email: string | null;
+  phone: string | null;
   notes: string | null;
   logo_path: string | null;
   created_by: string;
@@ -85,7 +86,8 @@ function ClientView() {
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [eName, setEName] = useState("");
-  const [eContact, setEContact] = useState("");
+  const [eEmail, setEEmail] = useState("");
+  const [ePhone, setEPhone] = useState("");
   const [eNotes, setENotes] = useState("");
   const [eLogoFile, setELogoFile] = useState<File | null>(null);
   const [eLogoPreview, setELogoPreview] = useState<string | null>(null);
@@ -102,7 +104,7 @@ function ClientView() {
     (async () => {
       const { data: c } = await supabase
         .from("clients")
-        .select("id, name, contact, notes, logo_path, created_by")
+        .select("id, name, email, phone, notes, logo_path, created_by")
         .eq("id", id)
         .maybeSingle();
       if (!c) {
@@ -188,7 +190,8 @@ function ClientView() {
   const openEdit = () => {
     if (!client) return;
     setEName(client.name);
-    setEContact(client.contact ?? "");
+    setEEmail(client.email ?? "");
+    setEPhone(client.phone ?? "");
     setENotes(client.notes ?? "");
     setELogoFile(null);
     if (eLogoPreview) URL.revokeObjectURL(eLogoPreview);
@@ -228,9 +231,12 @@ function ClientView() {
       toast.error("Error subiendo el logo");
       return;
     }
-    const updates: { name: string; contact: string | null; notes: string | null; logo_path?: string | null } = {
+    const emailVal = eEmail.trim() || null;
+    const phoneVal = ePhone.trim() || null;
+    const updates: { name: string; email: string | null; phone: string | null; notes: string | null; logo_path?: string | null } = {
       name: eName,
-      contact: eContact || null,
+      email: emailVal,
+      phone: phoneVal,
       notes: eNotes || null,
     };
     if (logoPath !== undefined) updates.logo_path = logoPath;
@@ -244,7 +250,8 @@ function ClientView() {
     setClient({
       ...client,
       name: eName,
-      contact: eContact || null,
+      email: emailVal,
+      phone: phoneVal,
       notes: eNotes || null,
       logo_path: logoPath !== undefined ? logoPath : client.logo_path,
     });
@@ -285,11 +292,30 @@ function ClientView() {
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-tight">{client.name}</h1>
-              {client.contact && (
-                <p className="text-sm text-muted-foreground mt-1">{client.contact}</p>
+              {(client.email || client.phone) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                  {client.email && (
+                    <a
+                      href={`mailto:${client.email}`}
+                      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      <span className="truncate">{client.email}</span>
+                    </a>
+                  )}
+                  {client.phone && (
+                    <a
+                      href={`tel:${client.phone.replace(/[^+\d]/g, "")}`}
+                      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>{client.phone}</span>
+                    </a>
+                  )}
+                </div>
               )}
               {client.notes && (
-                <p className="text-sm text-muted-foreground mt-2 max-w-2xl">{client.notes}</p>
+                <p className="text-sm text-muted-foreground mt-2 max-w-2xl whitespace-pre-wrap">{client.notes}</p>
               )}
             </div>
           </div>
@@ -390,9 +416,31 @@ function ClientView() {
                 <Label htmlFor="e-name">Nombre *</Label>
                 <Input id="e-name" value={eName} onChange={(e) => setEName(e.target.value)} required />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="e-contact">Contacto</Label>
-                <Input id="e-contact" value={eContact} onChange={(e) => setEContact(e.target.value)} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="e-email">Correo</Label>
+                  <Input
+                    id="e-email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={eEmail}
+                    onChange={(e) => setEEmail(e.target.value)}
+                    placeholder="contacto@empresa.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e-phone">Teléfono</Label>
+                  <Input
+                    id="e-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={ePhone}
+                    onChange={(e) => setEPhone(e.target.value)}
+                    placeholder="+52 55 1234 5678"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="e-notes">Notas</Label>

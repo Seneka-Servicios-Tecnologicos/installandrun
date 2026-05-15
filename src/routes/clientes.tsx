@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { Plus, Search, Building2, Trash2, ImagePlus, X } from "lucide-react";
+import { Plus, Search, Building2, Trash2, ImagePlus, X, Mail, Phone } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,7 +47,8 @@ export const Route = createFileRoute("/clientes")({
 interface ClientRow {
   id: string;
   name: string;
-  contact: string | null;
+  email: string | null;
+  phone: string | null;
   notes: string | null;
   logo_path: string | null;
   created_at: string;
@@ -63,7 +64,8 @@ function ClientsPage() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -78,7 +80,7 @@ function ClientsPage() {
     if (!user) return;
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, contact, notes, logo_path, created_at, created_by")
+      .select("id, name, email, phone, notes, logo_path, created_at, created_by")
       .order("name", { ascending: true });
     if (error) {
       toast.error("Error cargando clientes");
@@ -110,7 +112,7 @@ function ClientsPage() {
   );
 
   const resetForm = () => {
-    setName(""); setContact(""); setNotes("");
+    setName(""); setEmail(""); setPhone(""); setNotes("");
     setLogoFile(null);
     if (logoPreview) URL.revokeObjectURL(logoPreview);
     setLogoPreview(null);
@@ -136,7 +138,8 @@ function ClientsPage() {
       .from("clients")
       .insert({
         name,
-        contact: contact || null,
+        email: email.trim() || null,
+        phone: phone.trim() || null,
         notes: notes || null,
         created_by: user.id,
       })
@@ -257,14 +260,31 @@ function ClientsPage() {
                       placeholder="Empresa S.A."
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="c-contact">Contacto</Label>
-                    <Input
-                      id="c-contact"
-                      value={contact}
-                      onChange={(e) => setContact(e.target.value)}
-                      placeholder="Juan Pérez · juan@empresa.com · +52..."
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="c-email">Correo</Label>
+                      <Input
+                        id="c-email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="contacto@empresa.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-phone">Teléfono</Label>
+                      <Input
+                        id="c-phone"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+52 55 1234 5678"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="c-notes">Notas</Label>
@@ -336,10 +356,29 @@ function ClientsPage() {
                       <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
                         {c.name}
                       </h3>
-                      {c.contact && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {c.contact}
-                        </p>
+                      {(c.email || c.phone) && (
+                        <div className="flex flex-col gap-0.5 mt-1">
+                          {c.email && (
+                            <a
+                              href={`mailto:${c.email}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="relative z-20 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors truncate pointer-events-auto w-fit max-w-full"
+                            >
+                              <Mail className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{c.email}</span>
+                            </a>
+                          )}
+                          {c.phone && (
+                            <a
+                              href={`tel:${c.phone.replace(/[^+\d]/g, "")}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="relative z-20 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors pointer-events-auto w-fit"
+                            >
+                              <Phone className="h-3 w-3 shrink-0" />
+                              <span>{c.phone}</span>
+                            </a>
+                          )}
+                        </div>
                       )}
                       <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
                         <span>{c.project_count} {c.project_count === 1 ? "proyecto" : "proyectos"}</span>
