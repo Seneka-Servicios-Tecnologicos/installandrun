@@ -46,7 +46,8 @@ export const Route = createFileRoute("/cliente/$id")({
 interface Client {
   id: string;
   name: string;
-  contact: string | null;
+  email: string | null;
+  phone: string | null;
   notes: string | null;
   logo_path: string | null;
   created_by: string;
