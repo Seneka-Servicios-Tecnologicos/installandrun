@@ -416,9 +416,31 @@ function ClientView() {
                 <Label htmlFor="e-name">Nombre *</Label>
                 <Input id="e-name" value={eName} onChange={(e) => setEName(e.target.value)} required />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="e-contact">Contacto</Label>
-                <Input id="e-contact" value={eContact} onChange={(e) => setEContact(e.target.value)} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="e-email">Correo</Label>
+                  <Input
+                    id="e-email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={eEmail}
+                    onChange={(e) => setEEmail(e.target.value)}
+                    placeholder="contacto@empresa.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="e-phone">Teléfono</Label>
+                  <Input
+                    id="e-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={ePhone}
+                    onChange={(e) => setEPhone(e.target.value)}
+                    placeholder="+52 55 1234 5678"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="e-notes">Notas</Label>
